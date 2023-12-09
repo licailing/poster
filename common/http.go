@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-	"image/color"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,7 +10,7 @@ import (
 
 // ServeHTTP 简单http接口
 func ServeHTTP() {
-	http.HandleFunc("/", postHandle)
+	http.HandleFunc("/poster", postHandle)
 	http.ListenAndServe(":"+C.ListenPort, nil)
 }
 
@@ -19,13 +18,16 @@ type httpReq struct {
 	AccessToken string `form:"access_token" json:"access_token"`
 	Scene       string `form:"scene" json:"scene"`
 	Page        string `form:"page" json:"page"`
-	Width       string `form:"width" json:"width"`
-	Title       string `form:"title" json:"title"`         //标题
-	Content     string `form:"content" json:"content"`     //文字内容
-	ImageURL    string `form:"image_url" json:"image_url"` //主图http链接或文件链接
-	qRCodeURL   string //二维码http链接或文件链接
+	Width       string `form:"width" json:"width"` //二维码的宽度，单位 px，最小 280px，最大 1280px
+	EnvVersion  string `form:"env_version" json:"env_version"` //要打开的小程序版本。正式版为 "release"，体验版为 "trial"，开发版为 "develop"。默认是正式版。
+	ImageURL    string `form:"image_url" json:"image_url"` //主图http链接或文件链接，多个,号隔开
+	QrcodeURL   string `form:"qrcode_url" json:"qrcode_url"` //可选 二维码http链接或文件链接
 	OutputDIR   string `form:"output_dir" json:"output_dir"`     //保存文件目录，可选
-	BorderColor string `form:"border_color" json:"border_color"` //边框颜色，可选
+	OutputFileName   string `form:"output_filename" json:"output_filename"`     //保存文件名称，可选，多个,号隔开
+	Bottom		string `form:"bottom" json:"bottom"` //二维码距离背景图底部距离
+	Right		string `form:"right" json:"right"` //二维码距离背景图右侧距离
+	QrcodeWidth string `form:"qrcode_width" json:"qrcode_width"` //海报上二维码宽度
+	ImageType 	string `form:"image_type" json:"image_type"` //可选 默认 jpg 生成海报的图片类型 png jpg
 }
 
 type httpResp struct {
@@ -59,14 +61,18 @@ func postHandle(w http.ResponseWriter, r *http.Request) {
 		rq.Scene = r.PostFormValue("scene")
 		rq.Page = r.PostFormValue("page")
 		rq.Width = r.PostFormValue("width")
-		rq.Title = r.PostFormValue("title")
-		rq.Content = r.PostFormValue("content")
+		rq.EnvVersion = r.PostFormValue("env_version")
 		rq.ImageURL = r.PostFormValue("image_url")
 		rq.OutputDIR = r.PostFormValue("output_dir")
-		rq.BorderColor = r.PostFormValue("border_color")
+		rq.OutputFileName = r.PostFormValue("output_filename")
+		rq.Bottom = r.PostFormValue("bottom")
+		rq.Right = r.PostFormValue("right")
+		rq.QrcodeWidth = r.PostFormValue("qrcode_width")
+		rq.ImageType = r.PostFormValue("image_type")
+		rq.QrcodeURL = r.PostFormValue("qrcode_url")
 	}
 
-	if rq.AccessToken == "" || rq.Scene == "" || rq.Page == "" || rq.Title == "" || rq.Content == "" {
+	if  rq.Scene == "" || rq.Page == "" {
 		log.Println("POST参数无效")
 		writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "POST参数无效"})
 		return
@@ -80,65 +86,64 @@ func postHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	qrcodeName, err := RequestQRCode(QRCodeReq{
-		Scene: rq.Scene,
-		Page:  rq.Page,
-		Width: _width,
-	}, "", rq.AccessToken)
-
+	_bottom, err := strconv.Atoi(rq.Bottom)
 	if err != nil {
-		log.Println("获取小程序码失败", err)
-		writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "获取小程序码失败"})
+		log.Println("bottom 必须是有效的数字")
+		writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "bottom 必须是有效的数字"})
 		return
 	}
 
-	// 使用生成的二维码来生成海报
-	rq.qRCodeURL = C.OutputDIR + qrcodeName
-	// 生成海报
-	var br, bg, bb uint8
-	br, bg, bb = 255, 255, 255
-	if rq.BorderColor != "" {
-		if rq.BorderColor[0:1] == "#" {
-			var _r, _g, _b uint64
-			var rHex, gHex, bHex string
-			switch {
-			case len(rq.BorderColor) == 4:
-				rHex = "0x" + rq.BorderColor[1:2]
-				gHex = "0x" + rq.BorderColor[2:3]
-				bHex = "0x" + rq.BorderColor[3:4]
-				_r, _ = strconv.ParseUint(rHex, 0, 8)
-				_g, _ = strconv.ParseUint(gHex, 0, 8)
-				_b, _ = strconv.ParseUint(bHex, 0, 8)
-				br = uint8(_r * 16)
-				bg = uint8(_g * 16)
-				bb = uint8(_b * 16)
-			case len(rq.BorderColor) == 7:
-				rHex = "0x" + rq.BorderColor[1:3]
-				gHex = "0x" + rq.BorderColor[3:5]
-				bHex = "0x" + rq.BorderColor[5:7]
-				_r, _ = strconv.ParseUint(rHex, 0, 8)
-				_g, _ = strconv.ParseUint(gHex, 0, 8)
-				_b, _ = strconv.ParseUint(bHex, 0, 8)
-				br = uint8(_r)
-				bg = uint8(_g)
-				bb = uint8(_b)
-			default:
-				log.Println("颜色值无效，支持格式如下：#ffffff，#fff", err)
-				writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "颜色值无效，支持格式如下：#ffffff，#fff"})
-				return
-			}
-		}
+	_right, err := strconv.Atoi(rq.Right)
+	if err != nil {
+		log.Println("right 必须是有效的数字")
+		writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "right 必须是有效的数字"})
+		return
 	}
 
-	bdC := color.RGBA{br, bg, bb, 255}
+	_qrcodeWidth, err := strconv.Atoi(rq.QrcodeWidth)
+	if err != nil {
+		log.Println("qrcode_width 必须是有效的数字")
+		writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "qrcode_width 必须是有效的数字"})
+		return
+	}
+
+	if(rq.OutputDIR == "") {
+		rq.OutputDIR = C.OutputDIR
+	}
+	var qrcodeName string
+	if rq.QrcodeURL == "" {
+		qrcodeImageName, err := RequestQRCode(QRCodeReq{
+			Scene: rq.Scene,
+			Page:  rq.Page,
+			Width: _width,
+			EnvVersion: rq.EnvVersion,
+		}, "", rq.AccessToken, rq.OutputDIR)
+	
+		if err != nil {
+			log.Println("获取小程序码失败", err)
+			writeResponse(w, map[string]interface{}{"error": 1, "request": rq, "message": "获取小程序码失败"})
+			return
+		}
+		qrcodeName = qrcodeImageName
+		// 使用生成的二维码来生成海报
+		rq.QrcodeURL = rq.OutputDIR + qrcodeImageName
+	} else {
+		qrcodeName = rq.QrcodeURL
+	}
+
+	if rq.ImageType == "" {
+		rq.ImageType = "jpg"
+	}
+
 	posterName, err := DrawPoster(Style{
 		ImageURL:       rq.ImageURL,
-		QRCodeURL:      rq.qRCodeURL,
-		Title:          rq.Title,
-		Content:        rq.Content,
-		OutputFileName: rq.OutputDIR,
+		QRCodeURL:      rq.QrcodeURL,
+		OutputFileName: rq.OutputFileName,
 		OutputDIR:      rq.OutputDIR,
-		BorderColor:    bdC,
+		ImageType: 		rq.ImageType,
+		QrcodeWidth: 	_qrcodeWidth,
+		Bottom:			_bottom,
+		Right:			_right,
 	})
 	if err != nil {
 		log.Println("海报生成失败", err)

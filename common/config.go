@@ -16,7 +16,6 @@ type conf struct {
 	Mapp         mappConf `json:"mapp"`
 	OutputDIR    string   `json:"output_dir"`    // 图片保存目录
 	ListenPort   string   `json:"listen_port"`   // 监听端口
-	FontFilePath string   `json:"fontfile_path"` // 字体路径
 }
 
 // mappConf 小程序配置
@@ -36,7 +35,6 @@ func Init() {
 		b, _ := json.MarshalIndent(conf{
 			OutputDIR:    "output/",
 			ListenPort:   "2020",
-			FontFilePath: "./resources/font.ttc",
 			Mapp: mappConf{
 				AppID:     "小程序app_id,可选",
 				AppSecret: "小程序app_secret,可选",

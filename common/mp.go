@@ -63,13 +63,15 @@ const mpQRCodeURL = "https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_toke
 type QRCodeReq struct {
 	Scene string `json:"scene"`
 	Page  string `json:"page"`
-	Width int    `json:"width"`
+	Width int    `json:"width"` //二维码的宽度，单位 px，最小 280px，最大 1280px
+	EnvVersion string `json:"env_version"` //要打开的小程序版本。正式版为 "release"，体验版为 "trial"，开发版为 "develop"。默认是正式版。
 }
 
 // RequestQRCode 获取小程序二维码
 // saveName 不包含后缀，为空的话就是随机文件名
 // 返回文件名和错误，文件存储在OutputDIR目录中
-func RequestQRCode(req QRCodeReq, saveName string, ak string) (string, error) {
+func RequestQRCode(req QRCodeReq, saveName string, ak string, outputDir string) (string, error) {
+	return "qrcode.jpg", nil
 	if saveName == "" {
 		saveName = GetRandomName(16)
 	}
@@ -112,9 +114,9 @@ func RequestQRCode(req QRCodeReq, saveName string, ak string) (string, error) {
 			outputFileName = outputFileName + ".png"
 		}
 	here:
-		f, err := os.OpenFile(C.OutputDIR+outputFileName, os.O_CREATE|os.O_RDWR, 0666)
+		f, err := os.OpenFile(outputDir+outputFileName, os.O_CREATE|os.O_RDWR, 0666)
 		if err != nil {
-			os.Mkdir(C.OutputDIR, 0666)
+			os.Mkdir(outputDir, 0666)
 			goto here
 		}
 		f.Write(body)

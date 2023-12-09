@@ -7,31 +7,24 @@
 
 ### 海报案例
 
-生成的海报内容包括主图、二维码图、文字内容和标题。  
+可一次生成多个海报image_url(多个,号隔开),如果需要生成背景透明的海报image_url背景使用png图片，image_url设为png
 
+![尺寸设计](./design.jpg)
+qrcode_width:170 海报上二维码宽度 为正方形
+bottom:42 二维码距离背景图底部距离
+right:42 二维码距离背景图右侧距离
 
 ![海报](https://s1.ax1x.com/2020/04/16/JkS2pn.jpg)
 
 ## 开始
 
-### 准备
-
-下载build里面的可执行文件和相关字体  
-目录文件,除了poster二进制程序外还需要font字体文件  
-
-```bash
-- poster
-- resources/font.ttc
-```
-
 ### 运行
 
 ```bash
-# 首次需要增加执行权 chmod +x ./poster
 # 首次运行会提示填写配置，填写完后再次运行
-./poster
+go run main.go
 # 调试ok后在后台运行
-# nohup ./poster &
+nohup go run main.go &
 ```
 
 ## 配置文件
@@ -50,39 +43,56 @@
 
 ### HTTP调用
 
+请求链接 http://127.0.0.1:2020/poster
+
 ```http
 POST / HTTP/1.1
 Host: 127.0.0.1:2020
 Content-Type: application/x-www-form-urlencoded
 
-access_token=32_fsmZvI40T32ZFTagB4h264eeK1Xgk-XU3Z7DeWTXj4KB24eJkw4Tq3olPVI0Y-s0rBBb8WIVKFVCN5_t7_NXaj5FBq9SDvzHTbrj4_xczKGq3QOByxankwjTbmskDsSG8BPJkReAC0csBu7RKTIaAAAUDS&
-scene=10&
+access_token=&
+scene=code=1&
 page=pages/index/index&
-width=640&
-title=标题文字&
-content=内容文字&
-image_url=http://img.mcdsh.com/storage/images/800/O5xEIoExzNk97bRLhaIe0izqo3XbnXKi6j9BWPQb.jpeg&
-border_color=#ffffff
+width=280&
+image_url=./sourceImages/test/poster1.jpg,./sourceImages/test/poster2.jpg&
+env_version=trial&
+output_dir=./output/test/&
+bottom=42&
+right=42&
+qrcode_width=170&
+image_type=jpg
 ```
 **参数**  
 
 `access_token` 是微信请求微信接口的access_token，需要在自己的业务系统中保持唯一，避免单独使用appid 和 appsecret生成，生成小程序码需要使用到这个参数。  
-`scene`、`page`是小程序获取二维码的参数
-`width` 是海报图片的宽度，string类型，太大会失真
-`title` 是海报底部主标题，不易过长
-`content` 是文字描述，最多可显示3行文字  
-`image_url` 是海报主图的URL链接，也可以是主机本地文件绝对路径  
-`border_color` 边框和背景色，换其他颜色二维码会有些锯齿
+
+`scene`、`page`、`env_version`是小程序获取二维码的参数。
+
+`width`是二维码的宽度，单位 px，最小 280px，最大 1280px。
+
+`env_version`是要打开的小程序版本。正式版为 "release"，体验版为 "trial"，开发版为 "develop"。默认是正式版。
+
+`image_url`是主图http链接或文件链接，多个,号隔开。
+
+`output_dir`是保存文件目录，可选
+
+`output_filename`是保存文件名称，可选，多个,号隔开
+
+`bottom`是二维码距离背景图底部距离
+
+`right`是二维码距离背景图右侧距离
+
+`qrcode_width`是海报上二维码宽度
+
+`image_type`是可选 默认 jpg 生成海报的图片类型 png jpg
 
 **正常返回**  
-
-
 
 ```json
 {
   "error": 0,
   "result": {
-    "poster": "DSGSrZHwzOwFrr6V.jpg",
+    "poster": "P50LAvUwq20yQCbC.jpg,hFQejimQ6YMMo7W6.jpg",
     "qrcode": "d7VWwZQRprO56Zun.jpg"
   }
 }
@@ -91,46 +101,69 @@ border_color=#ffffff
 
 HTTP请求也支持JSON格式  
 
+多张图片以及生成jpg海报
+
+请求链接 http://127.0.0.1:2020/poster
 ```http
 POST / HTTP/1.1
 Host: 127.0.0.1:2020
 Content-Type: application/json
 
 {
-	"access_token":"32_lpIVQGG-qAdXpaUn__X3W47MmWwm-8fIKDmreYnm77ON0E76BmtZXsoZpoIL0_HOre_D6Gr53s4Wv_n41n7mrmUAA7hm-SROYREM0xhX6oCtSds2QoYwv5wtqGh4uRIzCJPJ-ka8BWaJr_l6IYSdADAQGA",
-	"scene":"10",
-	"page":"pages/index/index",
-	"width":"640",
-	"title":"标题文字",
-	"content":"内容文字",
-	"image_url":"http://img.mcdsh.com/storage/images/800/O5xEIoExzNk97bRLhaIe0izqo3XbnXKi6j9BWPQb.jpeg",
-    "border_color":"#ffffff"
+    "access_token": "",
+    "scene": "code=1",
+    "page": "pages/index/index",
+    "width": "280",
+    "env_version": "trial",
+    "image_url": "./sourceImages/test/poster1.jpg,./sourceImages/test/poster2.jpg",
+    "output_dir": "./output/test/",
+    "bottom": "42",
+    "right": "42",
+    "qrcode_width": "170",
+    "image_type": "jpg"
 }
 ```
-
-
-### CLI命令行测试运行
-
-可以直接使用命令行方式跑一遍看下效果，此方式需要填写配置文件中的mapp.app_id 和 mapp.app_secret，会挤掉自己业务系统中的access_token，仅供测试。
-
-```bash
-./poster -cli \
--imageURL=http://img.mcdsh.com/storage/images/800/O5xEIoExzNk97bRLhaIe0izqo3XbnXKi6j9BWPQb.jpeg \
--title=BestFriendsChina \
--content=我叫小爱，今年一岁啦，领养代替买卖，赶紧扫码带我回家吧！ \
--scene=15625 \
--page=pages/pets/petDetail/petDetail
+返回
+```json
+{
+  "error": 0,
+  "result": {
+    "poster": "cOGyIpfTuBlto18t.jpg,Bq6P9fNwfafY0NNZ.jpg",
+    "qrcode": "d7VWwZQRprO56Zun.jpg"
+  }
+}
 ```
+生成png海报
+```http
+POST / HTTP/1.1
+Host: 127.0.0.1:2020
+Content-Type: application/json
 
-**输出结果**  
-
-```bash
-运行成功
-小程序码文件 Rw695X5PjQypzIxO.jpg
-海报文件 4oikqQLBVrZHBanX.jpg
+{
+    "access_token": "",
+    "scene": "code=1",
+    "page": "pages/index/index",
+    "width": "280",
+    "env_version": "trial",
+    "image_url": "./sourceImages/test/poster1.png",
+    "output_filename": "test.png",
+    "output_dir": "./output/test/",
+    "bottom": "42",
+    "right": "42",
+    "qrcode_width": "170",
+    "image_type": "png"
+}
 ```
-
-
+返回
+```json
+{
+  "error": 0,
+  "result": {
+    "poster": "test.png",
+    "qrcode": "sIaXCxws1IADl2uI.jpg"
+  }
+}
+```
 ## 总结
 
 这次更新取消强制填写appid和appsecret参数，改为由用户自己实现access_token的获取并传值，解决小程序生成二维码时，access_token容易被自己的业务系统挤掉导致失败的问题。  
