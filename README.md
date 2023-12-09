@@ -10,11 +10,15 @@
 可一次生成多个海报image_url(多个,号隔开),如果需要生成背景透明的海报image_url背景使用png图片，image_url设为png
 
 ![尺寸设计](./design.jpg)
-qrcode_width:170 海报上二维码宽度 为正方形
-bottom:42 二维码距离背景图底部距离
-right:42 二维码距离背景图右侧距离
 
-![海报](https://s1.ax1x.com/2020/04/16/JkS2pn.jpg)
+`qrcode_width`:170 海报上二维码宽度 为正方形
+
+`bottom`:42 二维码距离背景图底部距离
+
+`right`:42 二维码距离背景图右侧距离
+
+![png海报](./output/test/test.png)
+![jpg海报](./output/test/hFQejimQ6YMMo7W6.jpg)
 
 ## 开始
 
